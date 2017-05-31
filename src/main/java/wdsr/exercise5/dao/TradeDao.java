@@ -2,15 +2,21 @@ package wdsr.exercise5.dao;
 
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.PreparedStatementCreator;
 import org.springframework.jdbc.core.RowCallbackHandler;
+import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 import wdsr.exercise5.model.Trade;
 
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Connection;
+import java.sql.Date;
 import java.util.Optional;
 
 @Repository
@@ -26,8 +32,21 @@ public class TradeDao {
      * @return metoda powinna zwracać id nowego rekordu.
      */
     public int insertTrade(Trade trade) {
-        // TODO
-        return 0;
+    	
+    	KeyHolder keyHolder = new GeneratedKeyHolder();
+    	jdbcTemplate.update(new PreparedStatementCreator() {
+    		@Override
+    		public PreparedStatement createPreparedStatement(Connection con) throws SQLException {
+				PreparedStatement stpre = con.prepareStatement("Insert INTO trade (asset, amount, date) VALUES (?,?,?)",Statement.RETURN_GENERATED_KEYS);
+				stpre.setString(1,trade.getAsset());
+				stpre.setDouble(2,trade.getAmount());
+				stpre.setDate(3,new java.sql.Date(trade.getDate().getTime()));
+				return stpre;
+    			}
+				}, keyHolder);
+    	        
+		
+        return keyHolder.getKey().intValue();
     }
 
     /**
@@ -37,8 +56,21 @@ public class TradeDao {
      * @return metaoda powinna zwracać obiekt reprezentujący rekord o podanym id.
      */
     public Optional<Trade> extractTrade(int id) {
-        // TODO
-        return Optional.empty();
+    	String sql = "SELECT * FROM trade WHERE id = " +id;
+    	
+        Trade result = jdbcTemplate.queryForObject(sql,
+        		(rs, rowNum) -> {
+        			Trade trade = null;
+        			trade = new Trade(id, rs.getString(2), rs.getDouble(3), rs.getDate(4));
+        			return trade;        			
+        		});
+        if (result == null) {
+        	return Optional.empty();
+        }
+        		
+        	
+        
+        return Optional.of(result);
     }
 
     /**
@@ -48,6 +80,14 @@ public class TradeDao {
      */
     public void extractTrade(int id, RowCallbackHandler rch) {
         // TODO
+    	jdbcTemplate.query(new PreparedStatementCreator() {
+    		@Override
+    		public PreparedStatement createPreparedStatement(Connection con) throws SQLException {
+				PreparedStatement stpre = con.prepareStatement("SELECT * FROM trade WHERE id = ?");
+				stpre.setInt(1,id);
+				return stpre;
+    			}
+				}, rch);
     }
 
     /**
@@ -56,6 +96,18 @@ public class TradeDao {
      */
     public void updateTrade(int id, Trade trade) {
         // TODO
+    	String sql = "UPDATE trade SET asset =?, amount =? , date=? WHERE id= ?";
+    	jdbcTemplate.update(new PreparedStatementCreator() {
+    		@Override
+    		public PreparedStatement createPreparedStatement(Connection con) throws SQLException {
+				PreparedStatement stpre = con.prepareStatement(sql);
+				stpre.setString(1,trade.getAsset());
+				stpre.setDouble(2,trade.getAmount());
+				stpre.setDate(3,new java.sql.Date(trade.getDate().getTime()));
+				stpre.setInt(4,id);
+				return stpre;
+    			}
+				});
     }
 
     /**
@@ -64,6 +116,9 @@ public class TradeDao {
      */
     public void deleteTrade(int id) {
         // TODO
+    	String sql = "DELETE FROM trade WHERE id="+id;
+    	jdbcTemplate.update(sql);
+    	
     }
 
 }
